@@ -44,6 +44,7 @@ def load_model():
     return YOLO("yolov8n.pt")
 
 model = load_model()
+currency_model = YOLO("best.pt")
 
 st.header("Choose Image Input")
 
@@ -319,3 +320,45 @@ if st.button("Describe My Surroundings"):
                 format="audio/mp3",
                 autoplay=True
             )
+
+st.header("Indian Currency Recognition")
+
+currency_file = st.file_uploader(
+    "Upload an Indian currency note",
+    type=["jpg", "jpeg", "png"],
+    key="currency_upload"
+)
+
+if currency_file is not None:
+    currency_image = Image.open(currency_file).convert("RGB")
+
+    st.image(currency_image, caption="Uploaded Currency Note")
+
+    currency_results = currency_model.predict(currency_image)
+
+    detected_notes = []
+
+    for box in currency_results[0].boxes:
+        class_id = int(box.cls[0])
+        confidence = float(box.conf[0])
+
+        note = currency_model.names[class_id]
+        detected_notes.append(note)
+
+        st.success(
+            f"Detected Note: ₹{note} | Confidence: {confidence:.2f}"
+        )
+
+    if detected_notes:
+        message = "Detected currency notes are " + ", ".join(detected_notes)
+
+        speech = gTTS(
+            text=message,
+            lang="en"
+        )
+
+        speech.save("currency_voice.mp3")
+
+        st.audio("currency_voice.mp3", format="audio/mp3")
+    else:
+        st.warning("No currency note detected.")
